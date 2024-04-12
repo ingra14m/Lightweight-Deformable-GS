@@ -21,6 +21,7 @@ import json
 from tqdm import tqdm
 from utils.image_utils import psnr
 from argparse import ArgumentParser
+from pytorch_msssim import ms_ssim
 
 
 def readImages(renders_dir, gt_dir):
@@ -69,26 +70,34 @@ def evaluate(model_paths):
                 renders, gts, image_names = readImages(renders_dir, gt_dir)
 
                 ssims = []
+                ms_ssims = []
                 psnrs = []
-                lpipss = []
+                lpips_vggs = []
+                lpips_alexs = []
 
                 for idx in tqdm(range(len(renders)), desc="Metric evaluation progress"):
                     ssims.append(ssim(renders[idx], gts[idx]))
                     psnrs.append(psnr(renders[idx], gts[idx]))
-                    lpipss.append(lpips_fn(renders[idx], gts[idx]).detach())
+                    ms_ssims.append(ms_ssim(renders[idx], gts[idx], data_range=1, size_average=True))
+                    lpips_vggs.append(lpips_vgg(renders[idx], gts[idx]).detach())
+                    lpips_alexs.append(lpips_alex(renders[idx], gts[idx]).detach())
 
                 print("  SSIM : {:>12.7f}".format(torch.tensor(ssims).mean(), ".5"))
                 print("  PSNR : {:>12.7f}".format(torch.tensor(psnrs).mean(), ".5"))
-                print("  LPIPS: {:>12.7f}".format(torch.tensor(lpipss).mean(), ".5"))
+                print("  MS-SSIM : {:>12.7f}".format(torch.tensor(ms_ssims).mean(), ".5"))
+                print("  LPIPS-VGG: {:>12.7f}".format(torch.tensor(lpips_vggs).mean(), ".5"))
+                print("  LPIPS-ALEX: {:>12.7f}".format(torch.tensor(lpips_alexs).mean(), ".5"))
                 print("")
 
                 full_dict[scene_dir][method].update({"SSIM": torch.tensor(ssims).mean().item(),
                                                      "PSNR": torch.tensor(psnrs).mean().item(),
-                                                     "LPIPS": torch.tensor(lpipss).mean().item()})
+                                                     "LPIPS-VGG": torch.tensor(lpips_vggs).mean().item(),
+                                                     "LPIPS-ALEX": torch.tensor(lpips_alexs).mean().item(),
+                                                     "MS-SSIM": torch.tensor(ms_ssims).mean().item()})
                 per_view_dict[scene_dir][method].update(
                     {"SSIM": {name: ssim for ssim, name in zip(torch.tensor(ssims).tolist(), image_names)},
                      "PSNR": {name: psnr for psnr, name in zip(torch.tensor(psnrs).tolist(), image_names)},
-                     "LPIPS": {name: lp for lp, name in zip(torch.tensor(lpipss).tolist(), image_names)}})
+                     "LPIPS": {name: lp for lp, name in zip(torch.tensor(lpips_vgg).tolist(), image_names)}})
 
             with open(scene_dir + "/results.json", 'w') as fp:
                 json.dump(full_dict[scene_dir], fp, indent=True)
@@ -101,7 +110,8 @@ def evaluate(model_paths):
 if __name__ == "__main__":
     device = torch.device("cuda:0")
     torch.cuda.set_device(device)
-    lpips_fn = lpips.LPIPS(net='vgg').to(device)
+    lpips_vgg = lpips.LPIPS(net='vgg').to(device)
+    lpips_alex = lpips.LPIPS(net='alex').to(device)
 
     # Set up command line argument parser
     parser = ArgumentParser(description="Training script parameters")
