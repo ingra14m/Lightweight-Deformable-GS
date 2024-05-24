@@ -72,18 +72,6 @@ python train.py -s path/to/your/d-nerf/dataset -m output/exp-name --eval --is_bl
 python train.py -s path/to/your/real-world/dataset -m output/exp-name --eval
 ```
 
-**6DoF Transformation:**
-
-We have also implemented the 6DoF transformation of 3D-GS, which may lead to an improvement in metrics but will reduce the speed of training and inference.
-
-```shell
-# D-NeRF
-python train.py -s path/to/your/d-nerf/dataset -m output/exp-name --eval --is_blender --is_6dof
-
-# NeRF-DS & HyperNeRF
-python train.py -s path/to/your/real-world/dataset -m output/exp-name --eval --is_6dof
-```
-
 
 
 ### Render & Evaluation
@@ -104,6 +92,8 @@ We provide several modes for rendering:
 
 
 ## Results
+
+FPS is tested on 3090.
 
 ### D-NeRF
 
