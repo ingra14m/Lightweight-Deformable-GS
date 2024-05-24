@@ -8,3 +8,4 @@ imageio-ffmpeg
 scipy
 dearpygui
 lpips
+pytorch_msssim
