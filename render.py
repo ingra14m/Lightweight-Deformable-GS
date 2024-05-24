@@ -23,6 +23,7 @@ from arguments import ModelParams, PipelineParams, get_combined_args
 from gaussian_renderer import GaussianModel
 import imageio
 import numpy as np
+import time
 
 
 def render_set(model_path, load2gpu_on_the_fly, is_6dof, name, iteration, views, gaussians, pipeline, background, deform):
@@ -35,6 +36,7 @@ def render_set(model_path, load2gpu_on_the_fly, is_6dof, name, iteration, views,
     makedirs(depth_path, exist_ok=True)
 
     renderings = []
+    t_list = []
     to8b = lambda x: (255 * np.clip(x, 0, 1)).astype(np.uint8)
 
     for idx, view in enumerate(tqdm(views, desc="Rendering progress")):
@@ -55,8 +57,27 @@ def render_set(model_path, load2gpu_on_the_fly, is_6dof, name, iteration, views,
         torchvision.utils.save_image(gt, os.path.join(gts_path, '{0:05d}'.format(idx) + ".png"))
         torchvision.utils.save_image(depth, os.path.join(depth_path, '{0:05d}'.format(idx) + ".png"))
 
-    renderings = np.stack(renderings, 0).transpose(0, 2, 3, 1)
-    imageio.mimwrite(os.path.join(render_path, 'video.mp4'), renderings, fps=30, quality=8)
+    for idx, view in enumerate(tqdm(views, desc="Rendering progress")):
+        fid = view.fid
+        xyz = gaussians.get_xyz
+        time_input = fid.unsqueeze(0).expand(xyz.shape[0], -1)
+        
+        torch.cuda.synchronize()
+        t_start = time.time()
+        
+        d_xyz, d_rotation, d_scaling = deform.step(xyz.detach(), time_input)
+        results = render(view, gaussians, pipeline, background, d_xyz, d_rotation, d_scaling, is_6dof)
+
+        torch.cuda.synchronize()
+        t_end = time.time()
+        t_list.append(t_end - t_start)
+
+    t = np.array(t_list[5:])
+    fps = 1.0 / t.mean()
+    print(f'Test FPS: \033[1;35m{fps:.5f}\033[0m, Num. of GS: {xyz.shape[0]}')
+
+    #renderings = np.stack(renderings, 0).transpose(0, 2, 3, 1)
+    #imageio.mimwrite(os.path.join(render_path, 'video.mp4'), renderings, fps=30, quality=8)
 
 
 def interpolate_time(model_path, load2gpt_on_the_fly, is_6dof, name, iteration, views, gaussians, pipeline, background, deform):

@@ -98,7 +98,7 @@ def getNerfppNorm(cam_info):
     return {"translate": translate, "radius": radius}
 
 
-def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder):
+def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder, msk_folder=None):
     cam_infos = []
     num_frames = len(cam_extrinsics)
     for idx, key in enumerate(cam_extrinsics):
@@ -121,7 +121,7 @@ def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder):
             focal_length_x = intr.params[0]
             FovY = focal2fov(focal_length_x, height)
             FovX = focal2fov(focal_length_x, width)
-        elif intr.model == "PINHOLE":
+        elif intr.model == "PINHOLE" or intr.model == "OPENCV" or intr.model == "SIMPLE_RADIAL":
             focal_length_x = intr.params[0]
             focal_length_y = intr.params[1]
             FovY = focal2fov(focal_length_y, height)
@@ -133,7 +133,17 @@ def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder):
         image_name = os.path.basename(image_path).split(".")[0]
         image = Image.open(image_path)
 
-        fid = int(image_name) / (num_frames - 1)
+        #if msk_folder is not None and image.size[-1] == 3:
+        #    msk_path = os.path.join(msk_folder, os.path.basename(extr.name))
+        #    mask = Image.open(msk_path)
+        #    image = np.concatenate([np.asarray(image), np.asarray(mask)], axis=-1)
+        #    image = Image.fromarray(image)
+
+        if '_' in image_name:
+            image_idx = int(image_name.split('_')[-1])
+            fid = image_idx / (num_frames / 2 - 1)
+        else:
+            fid = int(image_name) / (num_frames - 1)
         cam_info = CameraInfo(uid=uid, R=R, T=T, FovY=FovY, FovX=FovX, image=image,
                               image_path=image_path, image_name=image_name, width=width, height=height, fid=fid)
         cam_infos.append(cam_info)
@@ -169,44 +179,70 @@ def storePly(path, xyz, rgb):
     ply_data.write(path)
 
 
-def readColmapSceneInfo(path, images, eval, llffhold=8):
+def readColmapSceneInfo(path, images, eval, llffhold=4, apply_cam_norm=False, recenter_by_pcl=False):
+    #sparse_name = "sparse" if os.path.exists(os.path.join(path, "sparse")) else "colmap_sparse"
+    sparse_name = "colmap_sparse"
     try:
-        cameras_extrinsic_file = os.path.join(path, "sparse/0", "images.bin")
-        cameras_intrinsic_file = os.path.join(path, "sparse/0", "cameras.bin")
+        cameras_extrinsic_file = os.path.join(path, f"{sparse_name}/0", "images.bin")
+        cameras_intrinsic_file = os.path.join(path, f"{sparse_name}/0", "cameras.bin")
         cam_extrinsics = read_extrinsics_binary(cameras_extrinsic_file)
         cam_intrinsics = read_intrinsics_binary(cameras_intrinsic_file)
     except:
-        cameras_extrinsic_file = os.path.join(path, "sparse/0", "images.txt")
-        cameras_intrinsic_file = os.path.join(path, "sparse/0", "cameras.txt")
+        cameras_extrinsic_file = os.path.join(path, f"{sparse_name}/0", "images.txt")
+        cameras_intrinsic_file = os.path.join(path, f"{sparse_name}/0", "cameras.txt")
         cam_extrinsics = read_extrinsics_text(cameras_extrinsic_file)
         cam_intrinsics = read_intrinsics_text(cameras_intrinsic_file)
 
-    reading_dir = "images" if images == None else images
-    cam_infos_unsorted = readColmapCameras(cam_extrinsics=cam_extrinsics, cam_intrinsics=cam_intrinsics,
-                                           images_folder=os.path.join(path, reading_dir))
+    #reading_dir = "images" if images == None else images
+    reading_dir = "images"
+    cam_infos_unsorted = readColmapCameras(cam_extrinsics=cam_extrinsics, cam_intrinsics=cam_intrinsics, images_folder=os.path.join(path, reading_dir))
     cam_infos = sorted(cam_infos_unsorted.copy(), key=lambda x: x.image_name)
 
     if eval:
-        train_cam_infos = [c for idx, c in enumerate(
-            cam_infos) if idx % llffhold != 0]
-        test_cam_infos = [c for idx, c in enumerate(
-            cam_infos) if idx % llffhold == 0]
+        #train_cam_infos = [c for idx, c in enumerate(
+        #    cam_infos) if idx % llffhold != 0]
+        #test_cam_infos = [c for idx, c in enumerate(
+        #    cam_infos) if idx % llffhold == 0]
+        with open(f'{path}/dataset.json', 'r') as f:
+            dataset_json = json.load(f)
+        train_cam_infos = [c for idx, c in enumerate(cam_infos) if c.image_name in dataset_json['train_ids']]
+        test_cam_infos = [c for idx, c in enumerate(cam_infos) if c.image_name in dataset_json['val_ids']]
     else:
         train_cam_infos = cam_infos
         test_cam_infos = []
 
-    nerf_normalization = getNerfppNorm(train_cam_infos)
+    nerf_normalization = getNerfppNorm(train_cam_infos + test_cam_infos)
 
-    ply_path = os.path.join(path, "sparse/0/points3D.ply")
-    bin_path = os.path.join(path, "sparse/0/points3D.bin")
-    txt_path = os.path.join(path, "sparse/0/points3D.txt")
+    if recenter_by_pcl:
+        ply_path = os.path.join(path, f"{sparse_name}/0/points3d_recentered.ply")
+    elif apply_cam_norm:
+        ply_path = os.path.join(path, f"{sparse_name}/0/points3d_normalized.ply")
+    else:
+        ply_path = os.path.join(path, f"{sparse_name}/0/points3d.ply")
+    bin_path = os.path.join(path, f"{sparse_name}/0/points3D.bin")
+    txt_path = os.path.join(path, f"{sparse_name}/0/points3D.txt")
+    adj_path = os.path.join(path, f"{sparse_name}/0/camera_adjustment")
     if not os.path.exists(ply_path):
         print("Converting point3d.bin to .ply, will happen only the first time you open the scene.")
         try:
             xyz, rgb, _ = read_points3D_binary(bin_path)
         except:
             xyz, rgb, _ = read_points3D_text(txt_path)
+        if apply_cam_norm:
+            xyz += nerf_normalization["apply_translate"]
+            xyz /= nerf_normalization["apply_radius"]
+        if recenter_by_pcl:
+            pcl_center = xyz.mean(axis=0)
+            translate_cam_info(train_cam_infos, - pcl_center)
+            translate_cam_info(test_cam_infos, - pcl_center)
+            xyz -= pcl_center
+            np.savez(adj_path, translate=-pcl_center)
         storePly(ply_path, xyz, rgb)
+    elif recenter_by_pcl:
+        translate = np.load(adj_path + '.npz')['translate']
+        translate_cam_info(train_cam_infos, translate=translate)
+        translate_cam_info(test_cam_infos, translate=translate)
+
     try:
         pcd = fetchPly(ply_path)
     except:
