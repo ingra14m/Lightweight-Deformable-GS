@@ -1,10 +1,10 @@
 # Lightweight Deformable 3D Gaussian
 
-## [Project page](https://ingra14m.github.io/Deformable-Gaussians/) | [Paper](https://arxiv.org/abs/2309.13101)
+## [Project page](https://ingra14m.github.io/Deformable-Gaussians/) | [Paper](https://arxiv.org/abs/2309.13101) | [Vanilla Code](https://github.com/ingra14m/Deformable-3D-Gaussians) 
 
 ![Teaser image](assets/teaser.png)
 
-This repository contains the official implementation associated with the paper "Deformable 3D Gaussians for High-Fidelity Monocular Dynamic Scene Reconstruction".
+This repository serves as an enhancement project for the paper 'Deformable 3D Gaussians for High-Fidelity Monocular Dynamic Scene Reconstruction'. By implementing a densification trick, we can achieve a halved number of Gaussians and higher FPS without compromising rendering quality.
 
 
 
@@ -107,11 +107,16 @@ We provide several modes for rendering:
 
 ### D-NeRF
 
-
-
-## Acknowledgments
-
-We sincerely thank the authors of [3D-GS](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/), [D-NeRF](https://www.albertpumarola.com/research/D-NeRF/index.html), [HyperNeRF](https://hypernerf.github.io/), [NeRF-DS](https://jokeryan.github.io/projects/nerf-ds/), and [DeVRF](https://jia-wei-liu.github.io/DeVRF/), whose codes and datasets were used in our work. We thank [Zihao Wang](https://github.com/Alen-Wong) for the debugging in the early stage, preventing this work from sinking. We also thank the reviewers and AC for not being influenced by PR, and fairly evaluating our work. This work was mainly supported by ByteDance MMLab.
+|          | PSNR  |  SSIM  | LPIPS(VGG) | FPS  | Mem(MB) |  Num.  |
+| -------- | :---: | :----: | :--------: | :--: | :-----: | :----: |
+| bouncing | 40.85 | 0.9952 |   0.0091   |  80  |  23.90  | 101031 |
+| hell     | 41.39 | 0.9866 |   0.0247   | 204  |  6.65   | 27704  |
+| hook     | 37.17 | 0.9859 |   0.0158   |  68  |  23.15  | 97876  |
+| jump     | 37.68 | 0.9894 |   0.0135   | 128  |  11.87  | 49986  |
+| mutant   | 43.32 | 0.9948 |   0.0055   |  64  |  27.5   | 116276 |
+| standup  | 44.18 | 0.9946 |   0.0076   | 129  |  11.15  | 47141  |
+| trex     | 37.76 | 0.9929 |   0.0099   |  47  |  34.7   | 146707 |
+| average  | 40.19 | 0.9913 |   0.0123   | 103  |  19.84  | 83817  |
 
 
 
