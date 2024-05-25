@@ -69,7 +69,7 @@ python train.py -s path/to/your/d-nerf/dataset -m output/exp-name --eval --is_bl
 **NeRF-DS/HyperNeRF:**
 
 ```shell
-python train.py -s path/to/your/real-world/dataset -m output/exp-name --eval
+python train.py -s path/to/your/real-world/dataset -m output/exp-name --eval --iterations 20000
 ```
 
 
@@ -137,6 +137,22 @@ $\tau_g=0.0005$
 | standup  | 44.18 | 0.9946 |   0.0076   | 129  |  11.15  | 47141  |
 | trex     | 37.76 | 0.9929 |   0.0099   |  47  |  34.7   | 146707 |
 | average  | 40.19 | 0.9913 |   0.0123   | 103  |  19.84  | 83817  |
+
+
+
+### NeRF-DS
+
+|         |   PSNR    |    SSIM    | LPIPS(VGG) |  FPS   |  Mem(MB)  |    Num.    |
+| ------- | :-------: | :--------: | :--------: | :----: | :-------: | :--------: |
+| as      |   26.42   |   0.8865   |   0.1804   |   86   |   24.34   |   102918   |
+| basin   |   19.69   |   0.7937   |   0.1898   |   63   |   33.81   |   142943   |
+| bell    |   25.32   |   0.8427   |   0.1622   |   42   |   43.40   |   183499   |
+| cup     |   24.65   |   0.8895   |   0.1584   |   58   |   29.61   |   125177   |
+| plate   |   20.54   |   0.8143   |   0.2216   |   60   |   28.76   |   121595   |
+| press   |   25.67   |   0.8611   |   0.1931   |   76   |   28.90   |   122197   |
+| sieve   |   25.37   |   0.8704   |   0.1489   |   71   |   22.90   |   125266   |
+| average |   23.95   |   0.8512   |   0.1792   | **65** | **30.24** | **131942** |
+| paper   | **24.11** | **0.8524** | **0.1769** |   35   |   56.78   |   221428   |
 
 
 
